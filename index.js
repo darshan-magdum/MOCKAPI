@@ -5,7 +5,6 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware to parse JSON bodies
 app.use(bodyParser.json());
 
 // MongoDB connection
@@ -14,7 +13,7 @@ mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB connected'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-// Define the customer schema
+// Customer schema
 const customerSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -44,12 +43,24 @@ app.post('/customers', async (req, res) => {
     }
 });
 
-// GET endpoint to retrieve a customer record by ID
-app.get('/customers/:id', async (req, res) => {
-    const customerId = req.params.id;
+// GET endpoint to retrieve a customer record by name, email, or ID
+app.get('/customers', async (req, res) => {
+    const { name, email, id } = req.body; // Get name, email, or ID from the body
+
+    // Validate input
+    if (!name && !email && !id) {
+        return res.status(400).json({ message: 'At least one of name, email, or ID is required' });
+    }
+
+    const query = {}; // Create a query object
+
+    // Add fields to query based on input
+    if (name) query.name = name;
+    if (email) query.email = email;
+    if (id) query._id = id;
 
     try {
-        const customer = await Customer.findById(customerId); // Find customer by ID
+        const customer = await Customer.findOne(query); // Find customer based on the query
 
         if (!customer) {
             return res.status(404).json({ message: 'Customer not found' });
