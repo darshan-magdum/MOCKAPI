@@ -18,6 +18,7 @@ const customerSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now } // Add createdAt field
 });
 
 // Create the customer model
@@ -43,7 +44,8 @@ app.post('/customers', async (req, res) => {
     }
 });
 
-// GET endpoint to retrieve a customer record by name, email, or ID
+
+// GET endpoint to retrieve customer records by name, email, or ID (case insensitive)
 app.get('/customers', async (req, res) => {
     const { name, email, id } = req.body; // Get name, email, or ID from the body
 
@@ -55,22 +57,23 @@ app.get('/customers', async (req, res) => {
     const query = {}; // Create a query object
 
     // Add fields to query based on input
-    if (name) query.name = name;
-    if (email) query.email = email;
+    if (name) query.name = new RegExp(name, 'i'); // Case insensitive regex for name
+    if (email) query.email = new RegExp(email, 'i'); // Case insensitive regex for email
     if (id) query._id = id;
 
     try {
-        const customer = await Customer.findOne(query); // Find customer based on the query
+        const customers = await Customer.find(query); // Find all customers based on the query
 
-        if (!customer) {
-            return res.status(404).json({ message: 'Customer not found' });
+        if (customers.length === 0) {
+            return res.status(404).json({ message: 'No customers found' });
         }
 
-        res.json(customer); // Respond with the found customer
+        res.json(customers); // Respond with the found customers
     } catch (error) {
-        res.status(500).json({ message: 'Error retrieving customer', error });
+        res.status(500).json({ message: 'Error retrieving customers', error });
     }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
