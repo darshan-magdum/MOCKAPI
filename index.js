@@ -18,7 +18,7 @@ const customerSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now } // Add createdAt field
+    createdAt: { type: Date, default: Date.now }
 });
 
 // Create the customer model
@@ -28,52 +28,90 @@ const Customer = mongoose.model('Customer', customerSchema);
 app.post('/customers', async (req, res) => {
     const { name, email, phone } = req.body;
 
-    // Validate input
     if (!name || !email || !phone) {
         return res.status(400).json({ message: 'Name, email, and phone are required' });
     }
 
-    // Create a new customer
     const customer = new Customer({ name, email, phone });
 
     try {
-        const savedCustomer = await customer.save(); // Save to the database
-        res.status(201).json(savedCustomer); // Respond with the created customer
+        await customer.save();
+        res.status(201).json({ message: 'Customer successfully created' });
     } catch (error) {
         res.status(500).json({ message: 'Error saving customer', error });
     }
 });
 
-
 // GET endpoint to retrieve customer records by name, email, or ID (case insensitive)
 app.get('/customers', async (req, res) => {
-    const { name, email, id } = req.body; // Get name, email, or ID from the body
+    const { name, email, id } = req.body;
 
-    // Validate input
     if (!name && !email && !id) {
         return res.status(400).json({ message: 'At least one of name, email, or ID is required' });
     }
 
-    const query = {}; // Create a query object
-
-    // Add fields to query based on input
-    if (name) query.name = new RegExp(name, 'i'); // Case insensitive regex for name
-    if (email) query.email = new RegExp(email, 'i'); // Case insensitive regex for email
+    const query = {};
+    if (name) query.name = new RegExp(name, 'i');
+    if (email) query.email = new RegExp(email, 'i');
     if (id) query._id = id;
 
     try {
-        const customers = await Customer.find(query); // Find all customers based on the query
+        const customers = await Customer.find(query);
 
         if (customers.length === 0) {
             return res.status(404).json({ message: 'No customers found' });
         }
 
-        res.json(customers); // Respond with the found customers
+        res.json(customers);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving customers', error });
     }
 });
 
+// PUT endpoint to update a customer record by ID
+app.put('/customers/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, email, phone } = req.body;
+
+    // Validate input
+    if (!name && !email && !phone) {
+        return res.status(400).json({ message: 'At least one of name, email, or phone is required' });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (email) updateFields.email = email;
+    if (phone) updateFields.phone = phone;
+
+    try {
+        const updatedCustomer = await Customer.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
+
+        if (!updatedCustomer) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+
+        res.json({ message: 'Customer successfully modified' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating customer', error });
+    }
+});
+
+// DELETE endpoint to remove a customer record by ID
+app.delete('/customers/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const deletedCustomer = await Customer.findByIdAndDelete(id);
+
+        if (!deletedCustomer) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+
+        res.json({ message: 'Customer successfully deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting customer', error });
+    }
+});
 
 // Start the server
 app.listen(PORT, () => {
